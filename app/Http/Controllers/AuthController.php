@@ -1,56 +1,49 @@
-<?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-   
-        public function register(Request $request)
+    // Registro de usuario
+    public function register(Request $request)
     {
         // Validación
-        $validator = Validator::make($request->all(), [
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        // Crear usuario
+        // Crear el usuario
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
         ]);
 
-        $token = $user->createToken('Repaso')->plainTextToken;
+        // Crear un token para el usuario
+        $token = $user->createToken('YourAppName')->plainTextToken;
 
-        return response()->json([
-            'message' => 'Usuario registrado correctamente',
-            'token' => $token,
-        ], 201);
-    
+        // Devolver la respuesta
+        return response()->json(['token' => $token], 201);
     }
 
+    // Iniciar sesión
     public function login(Request $request)
     {
-        // Validar credenciales
+        // Validar las credenciales
         $credentials = $request->only('email', 'password');
 
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
 
-            // Crear token
-            $token = $user->createToken('NombreDeTuAplicación')->plainTextToken;
+            // Crear un token de acceso
+            $token = $user->createToken('YourAppName')->plainTextToken;
 
-            return response()->json([
-                'message' => 'Inicio de sesión exitoso',
-                'token' => $token,
-            ]);
+            return response()->json(['token' => $token]);
         }
 
         return response()->json(['message' => 'Credenciales incorrectas'], 401);
@@ -59,7 +52,7 @@ class AuthController extends Controller
     // Cerrar sesión
     public function logout(Request $request)
     {
-        // Revocar el token del usuario actual
+        // Revocar todos los tokens del usuario
         $request->user()->tokens->each(function ($token) {
             $token->delete();
         });
